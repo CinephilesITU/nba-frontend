@@ -11,6 +11,7 @@ import { PlayerComparisonChart } from "@/components/player-comparison-chart"
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const player = getPlayerById(id)
+  const a = 1 
 
   if (!player) {
     return (
