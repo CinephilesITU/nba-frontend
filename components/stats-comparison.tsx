@@ -3,16 +3,32 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { mockPlayers } from "@/lib/mock-data"
+import { PlayerWithStats } from "@/lib/types"
 
-const comparisonData = mockPlayers.map((player) => ({
-  name: player.name.split(" ")[0],
-  points: player.regularSeason.points,
-  assists: player.regularSeason.assists,
-  rebounds: player.regularSeason.rebounds,
-}))
+interface StatsComparisonProps {
+  players: PlayerWithStats[]
+}
 
-export function StatsComparison() {
+export function StatsComparison({ players }: StatsComparisonProps) {
+  const playersWithRegularStats = players.filter((player) => player.regularSeason)
+
+  const comparisonData = playersWithRegularStats.map((player) => ({
+    name: player.playername.split(" ")[0],
+    points: player.regularSeason?.pts ?? 0,
+    assists: player.regularSeason?.ast ?? 0,
+    rebounds: player.regularSeason?.reb ?? 0,
+  }))
+
+  const getLeader = (key: "pts" | "ast" | "reb") => {
+    return playersWithRegularStats
+      .slice()
+      .sort((a, b) => (b.regularSeason?.[key] ?? 0) - (a.regularSeason?.[key] ?? 0))[0]
+  }
+
+  const pointsLeader = getLeader("pts")
+  const assistsLeader = getLeader("ast")
+  const reboundsLeader = getLeader("reb")
+
   return (
     <section id="stats" className="py-20">
       <div className="container mx-auto px-4">
@@ -54,27 +70,33 @@ export function StatsComparison() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
           <Card className="p-6 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up bg-primary/10 border-primary/30">
-            <div className="text-4xl font-bold text-primary mb-2">{mockPlayers[0].regularSeason.points}</div>
+            <div className="text-4xl font-bold text-primary mb-2">
+              {pointsLeader?.regularSeason ? pointsLeader.regularSeason.pts.toFixed(1) : "-"}
+            </div>
             <div className="text-sm text-muted-foreground mb-1">Highest Points Average</div>
-            <div className="text-xs text-primary">{mockPlayers[0].name}</div>
+            <div className="text-xs text-primary">{pointsLeader?.playername ?? "TBD"}</div>
           </Card>
 
           <Card
             className="p-6 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up bg-secondary/10 border-secondary/30"
             style={{ animationDelay: "0.1s" }}
           >
-            <div className="text-4xl font-bold text-secondary mb-2">{mockPlayers[0].regularSeason.assists}</div>
+            <div className="text-4xl font-bold text-secondary mb-2">
+              {assistsLeader?.regularSeason ? assistsLeader.regularSeason.ast.toFixed(1) : "-"}
+            </div>
             <div className="text-sm text-muted-foreground mb-1">Highest Assists Average</div>
-            <div className="text-xs text-secondary">{mockPlayers[0].name}</div>
+            <div className="text-xs text-secondary">{assistsLeader?.playername ?? "TBD"}</div>
           </Card>
 
           <Card
             className="p-6 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up bg-accent/10 border-accent/30"
             style={{ animationDelay: "0.2s" }}
           >
-            <div className="text-4xl font-bold text-accent mb-2">{mockPlayers[3].regularSeason.rebounds}</div>
+            <div className="text-4xl font-bold text-accent mb-2">
+              {reboundsLeader?.regularSeason ? reboundsLeader.regularSeason.reb.toFixed(1) : "-"}
+            </div>
             <div className="text-sm text-muted-foreground mb-1">Highest Rebounds Average</div>
-            <div className="text-xs text-accent">{mockPlayers[3].name}</div>
+            <div className="text-xs text-accent">{reboundsLeader?.playername ?? "TBD"}</div>
           </Card>
         </div>
       </div>

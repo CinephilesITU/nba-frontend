@@ -1,12 +1,14 @@
-"use client"
-
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Activity } from "lucide-react"
-import { mockPlayers } from "@/lib/mock-data"
 import Link from "next/link"
+import { PlayerWithStats } from "@/lib/types"
 
-export function TopPlayers() {
+interface TopPlayersProps {
+  players: PlayerWithStats[]
+}
+
+export function TopPlayers({ players }: TopPlayersProps) {
   return (
     <section id="players" className="py-20 relative">
       <div className="container mx-auto px-4">
@@ -21,12 +23,15 @@ export function TopPlayers() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {mockPlayers.map((player, index) => (
-            <Link key={player.id} href={`/player/${player.playerID}`}>
-              <Card
-                className="group relative overflow-hidden bg-card hover:bg-card/80 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 cursor-pointer animate-scale-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+          {players.map((player, index) => {
+            const regularSeason = player.regularSeason
+
+            return (
+              <Link key={player.playerid} href={`/player/${player.playerid}`}>
+                <Card
+                  className="group relative overflow-hidden bg-card hover:bg-card/80 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 cursor-pointer animate-scale-in"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 <div className="p-6 relative z-10">
@@ -39,27 +44,33 @@ export function TopPlayers() {
 
                   <div className="aspect-square mb-4 rounded-lg overflow-hidden bg-muted">
                     <img
-                      src={player.image || "/placeholder.svg"}
-                      alt={player.name}
+                      src={player.headshoturl || "/placeholder.svg"}
+                      alt={player.playername}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
 
-                  <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">{player.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{player.team}</p>
+                  <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">{player.playername}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{player.team?.teamname ?? "Unknown Team"}</p>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Points</span>
-                      <span className="font-bold text-primary">{player.regularSeason.points}</span>
+                      <span className="font-bold text-primary">
+                        {regularSeason ? regularSeason.pts.toFixed(1) : "-"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Assists</span>
-                      <span className="font-bold text-secondary">{player.regularSeason.assists}</span>
+                      <span className="font-bold text-secondary">
+                        {regularSeason ? regularSeason.ast.toFixed(1) : "-"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Rebounds</span>
-                      <span className="font-bold text-accent">{player.regularSeason.rebounds}</span>
+                      <span className="font-bold text-accent">
+                        {regularSeason ? regularSeason.reb.toFixed(1) : "-"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
                       <span className="text-muted-foreground flex items-center gap-1">
@@ -67,7 +78,7 @@ export function TopPlayers() {
                         Efficiency
                       </span>
                       <span className="font-bold flex items-center gap-1">
-                        {player.regularSeason.efficiency}
+                        {regularSeason ? (regularSeason.pts + regularSeason.ast + regularSeason.reb).toFixed(1) : "-"}
                         <TrendingUp className="w-3 h-3 text-accent" />
                       </span>
                     </div>
@@ -75,7 +86,8 @@ export function TopPlayers() {
                 </div>
               </Card>
             </Link>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
