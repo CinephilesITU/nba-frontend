@@ -3,6 +3,7 @@ import { Navigation } from "@/components/navigation"
 import { StatsComparison } from "@/components/stats-comparison"
 import { TeamStandings } from "@/components/team-standings"
 import { TopPlayers } from "@/components/top-players"
+import { LivePlayersPanel } from "@/components/live-players-panel"
 import { getPlayersWithStats, getTeamsWithStats } from "@/lib/data-service"
 
 export default function Home() {
@@ -16,6 +17,7 @@ export default function Home() {
       <Navigation />
       <Hero />
       <TopPlayers players={players} />
+      <LivePlayersPanel />
       <TeamStandings eastTeams={eastTeams} westTeams={westTeams} />
       <StatsComparison players={players} />
     </main>
