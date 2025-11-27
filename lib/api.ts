@@ -1,5 +1,11 @@
-// Backend URL'i
-const API_BASE_URL = "http://134.122.55.126:5001/api/v1"
+// Sunucu tarafında mı çalışıyoruz yoksa tarayıcıda mı?
+const IS_SERVER = typeof window === "undefined";
+
+// Eğer sunucudaysak (Server Component) direkt IP'ye git.
+// Eğer tarayıcıdaysak (Client Component) Vercel üzerinden proxy yap (/api/v1).
+const API_BASE_URL = IS_SERVER
+  ? "http://134.122.55.126:5001/api/v1"
+  : "/api/v1";
 
 // ------------------------------------------------------------------
 // INTERFACES (Arayüzler)
@@ -92,15 +98,9 @@ export interface Leader {
 export async function fetchPlayers(): Promise<Player[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/players`, { cache: 'no-store' })
-    
-    if (!response.ok) {
-      console.error(`[API Error] fetchPlayers failed: ${response.status}`)
-      return []
-    }
+    if (!response.ok) return []
 
     const data = await response.json()
-    console.log("[API] fetchPlayers response:", data)
-
     if (data.data?.players) return data.data.players
     if (data.players) return data.players
 
@@ -113,18 +113,11 @@ export async function fetchPlayers(): Promise<Player[]> {
 
 export async function fetchPlayerById(id: number | string): Promise<Player | null> {
   if (!id) return null
-
   try {
     const response = await fetch(`${API_BASE_URL}/players/${id}?location=OVERALL&season=REGULAR`, { cache: 'no-store' })
-    
-    if (!response.ok) {
-      console.error(`[API Error] fetchPlayerById failed for ID ${id}: ${response.status}`)
-      return null
-    }
+    if (!response.ok) return null
 
     const data = await response.json()
-    console.log("[API] fetchPlayerById response:", data)
-
     if (data.data?.player) return data.data.player
     if (data.player) return data.player
 
@@ -141,14 +134,11 @@ export async function fetchPlayerStats(
   season = "REGULAR",
 ): Promise<PlayerStats | null> {
   if (!id) return null
-
   try {
     const response = await fetch(`${API_BASE_URL}/players/${id}?location=${location}&season=${season}`)
-    
     if (!response.ok) return null
 
     const data = await response.json()
-
     if (data.data?.player?.stats) return data.data.player.stats
     if (data.player?.stats) return data.player.stats
 
@@ -160,7 +150,47 @@ export async function fetchPlayerStats(
 }
 
 // ------------------------------------------------------------------
-// TEAM FUNCTIONS (HATA VEREN KISIM GÜNCELLENDİ)
+// SEARCH FUNCTION
+// ------------------------------------------------------------------
+
+export async function searchPlayers(query: string): Promise<Player[]> {
+  // Frontend Koruması: 2 karakterden azsa istek atma
+  if (!query || query.length < 2) return []
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/players/search?q=${encodeURIComponent(query)}`)
+
+    // 1. HTTP Hatası Kontrolü
+    if (!response.ok) {
+      console.warn(`[Search API Error] Status: ${response.status}`)
+      return []
+    }
+
+    // 2. JSON Ayrıştırma Kontrolü
+    const text = await response.text()
+    try {
+      const data = JSON.parse(text)
+      
+      console.log("[API] searchPlayers response:", data)
+
+      if (data.status === "success" && data.data) {
+        return data.data
+      }
+      return []
+
+    } catch (e) {
+      console.error("[API Error] Server returned invalid JSON:", text.substring(0, 100))
+      return []
+    }
+
+  } catch (error) {
+    console.error("Error searching players:", error)
+    return []
+  }
+}
+
+// ------------------------------------------------------------------
+// TEAM & LEADER FUNCTIONS
 // ------------------------------------------------------------------
 
 export async function fetchTeams(conference?: string): Promise<Team[]> {
@@ -170,14 +200,9 @@ export async function fetchTeams(conference?: string): Promise<Team[]> {
       : `${API_BASE_URL}/teams`
     
     const response = await fetch(url, { cache: 'no-store' })
-    
-    if (!response.ok) {
-      console.error(`[API Error] fetchTeams failed: ${response.status}`)
-      return []
-    }
+    if (!response.ok) return []
 
     const data = await response.json()
-
     if (data.data?.teams) return data.data.teams
     if (data.teams) return data.teams
 
@@ -189,34 +214,13 @@ export async function fetchTeams(conference?: string): Promise<Team[]> {
 }
 
 export async function fetchTeamById(id: number | string): Promise<Team | null> {
-  // 1. ID Kontrolü: Eğer ID yoksa veya undefined ise istek atma
-  if (!id || id === "undefined" || id === "null") {
-    console.error("[API Error] fetchTeamById called with invalid ID:", id)
-    return null
-  }
-
+  if (!id) return null
   try {
-    // 2. HTTP İsteği
-    const response = await fetch(`${API_BASE_URL}/teams/${id}`, { 
-      cache: 'no-store' // Verilerin güncel kalması için cacheleme yapma
-    })
+    const response = await fetch(`${API_BASE_URL}/teams/${id}`, { cache: 'no-store' })
+    if (!response.ok) return null
 
-    // 3. HTTP Status Kontrolü (404, 500 vb. engellemek için)
-    if (!response.ok) {
-      console.error(`[API Error] fetchTeamById failed for ID ${id}: ${response.status} ${response.statusText}`)
-      // Eğer response JSON değilse (örn HTML hata sayfası), text olarak okuyup logla ama hata fırlatma
-      const textBody = await response.text()
-      console.error("Response Body:", textBody)
-      return null
-    }
-
-    // 4. JSON Ayrıştırma
     const data = await response.json()
-    console.log("[API] fetchTeamById response:", data)
-
-    if (data.data?.team) {
-      return data.data.team
-    }
+    if (data.data?.team) return data.data.team
     if (data.team) return data.team
 
     return null
@@ -226,47 +230,18 @@ export async function fetchTeamById(id: number | string): Promise<Team | null> {
   }
 }
 
-// ------------------------------------------------------------------
-// STATS/LEADERS FUNCTIONS
-// ------------------------------------------------------------------
-
 export async function fetchLeaders(category = "PTS", season = "REGULAR"): Promise<Leader[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/stats/leaders?category=${category}&season=${season}`, { cache: 'no-store' })
-    
     if (!response.ok) return []
 
     const data = await response.json()
-
-    if (data.data && Array.isArray(data.data)) {
-      return data.data
-    }
+    if (data.data && Array.isArray(data.data)) return data.data
     if (data.leaders) return data.leaders
 
     return []
   } catch (error) {
     console.error("Error fetching leaders:", error)
-    return []
-  }
-}
-
-export async function searchPlayers(query: string): Promise<Player[]> {
-  // Backend en az 2 karakter istiyor
-  if (!query || query.length < 2) return []
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/players/search?q=${encodeURIComponent(query)}`)
-    const data = await response.json()
-
-    console.log("[API] searchPlayers response:", data)
-
-    if (data.status === "success" && data.data) {
-      return data.data
-    }
-    
-    return []
-  } catch (error) {
-    console.error("Error searching players:", error)
     return []
   }
 }

@@ -32,7 +32,7 @@ export function TopPlayers() {
         setLoading(true)
         const data = await fetchPlayers()
         setAllPlayers(data)
-        setCurrentList(data) // Başlangıçta geçerli liste tümüdür
+        setCurrentList(data)
       } catch (error) {
         console.error("Failed to load player list", error)
       } finally {
