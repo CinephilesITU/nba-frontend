@@ -1,15 +1,14 @@
 // Sunucu tarafında mı çalışıyoruz?
 const IS_SERVER = typeof window === "undefined";
 
-// KRİTİK AYAR:
-// 1. Sunucudaysak (Server Component): Direkt IP'ye git (Hızlıdır, HTTPS sorunu olmaz).
-// 2. Tarayıcıdaysak (Client Component): '/api/v1' yolunu kullan (Vercel bunu yakalayıp sunucuya yönlendirecek).
+// API Base URL Ayarı
+// Sunucudaysak direkt IP, tarayıcıdaysak Vercel proxy (/api/v1) kullanılır.
 const API_BASE_URL = IS_SERVER
   ? "http://134.122.55.126:5001/api/v1" 
   : "/api/v1";
 
 // ------------------------------------------------------------------
-// INTERFACES (Arayüzler)
+// INTERFACES (Veri Tipleri)
 // ------------------------------------------------------------------
 
 export interface Player {
@@ -31,8 +30,10 @@ export interface PlayerStats {
   REB: number
   AST: number
   steal?: number
-  STL_x?: number
+  STL_x?: number 
+  steals?: number
   BLK_x?: number
+  blocks?: number
   efficiency: number
   FGM?: number
   FGA?: number
@@ -55,27 +56,38 @@ export interface PlayerStats {
 export interface Team {
   teamID: number
   teamName: string
-  teamAbbreviate?: string
+  teamAbbreviation?: string // JSON'dan gelen
+  teamAbbreviate?: string   // Yedek
   conference: string
   logoUrl?: string
+  season_type?: string
   stats?: TeamStats
   roster?: RosterPlayer[]
 }
 
 export interface TeamStats {
-  GP_y: number
-  W_y: number
-  L_y: number
-  W_PCT: number
-  W_RANK: number
-  DEF_RATING: number
-  DEF_RATING_RANK: number
-  DREB_y: number
-  DREB_RANK: number
-  STL_y: number
-  STL_RANK: number
-  BLK_y: number
-  BLK_RANK: number
+  // JSON'dan gelen yeni yapı (camelCase)
+  winRank?: number
+  lossRank?: number
+  stealRank?: number
+  blockRank?: number
+  defRatingRank?: number
+  defRebRank?: number
+  
+  // Eski yapı (snake_case)
+  GP_y?: number
+  W_y?: number
+  L_y?: number
+  W_PCT?: number
+  W_RANK?: number
+  DEF_RATING?: number
+  DEF_RATING_RANK?: number
+  DREB_y?: number
+  DREB_RANK?: number
+  STL_y?: number
+  STL_RANK?: number
+  BLK_y?: number
+  BLK_RANK?: number
 }
 
 export interface RosterPlayer {
@@ -84,6 +96,8 @@ export interface RosterPlayer {
   position: string
   headshotUrl: string
   avg_pts: number
+  avg_ast?: number // Yeni
+  avg_reb?: number // Yeni
 }
 
 export interface Leader {
@@ -99,12 +113,10 @@ export interface Leader {
 export async function fetchPlayers(): Promise<Player[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/players`, { cache: 'no-store' })
-    if (!response.ok) {
-      console.error(`Fetch players failed: ${response.status}`)
-      return []
-    }
+    if (!response.ok) return []
 
     const data = await response.json()
+    // data.data.players kontrolü
     if (data.data?.players) return data.data.players
     if (data.players) return data.players
 
@@ -122,6 +134,7 @@ export async function fetchPlayerById(id: number | string): Promise<Player | nul
     if (!response.ok) return null
 
     const data = await response.json()
+    // data.data.player kontrolü
     if (data.data?.player) return data.data.player
     if (data.player) return data.player
 
@@ -162,7 +175,6 @@ export async function searchPlayers(query: string): Promise<Player[]> {
 
   try {
     const response = await fetch(`${API_BASE_URL}/players/search?q=${encodeURIComponent(query)}`)
-
     if (!response.ok) return []
 
     const text = await response.text()
@@ -192,10 +204,7 @@ export async function fetchTeams(conference?: string): Promise<Team[]> {
       : `${API_BASE_URL}/teams`
     
     const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) {
-      console.error(`Fetch teams failed: ${response.status}`)
-      return []
-    }
+    if (!response.ok) return []
 
     const data = await response.json()
     if (data.data?.teams) return data.data.teams
@@ -208,15 +217,27 @@ export async function fetchTeams(conference?: string): Promise<Team[]> {
   }
 }
 
+// GÜNCEL: JSON yapısına (data.data.team) tam uyumlu
 export async function fetchTeamById(id: number | string): Promise<Team | null> {
   if (!id) return null
   try {
     const response = await fetch(`${API_BASE_URL}/teams/${id}`, { cache: 'no-store' })
-    if (!response.ok) return null
+    
+    if (!response.ok) {
+      console.error(`Team fetch error: ${response.status}`)
+      return null
+    }
 
     const data = await response.json()
-    if (data.data?.team) return data.data.team
-    if (data.team) return data.team
+    
+    // JSON örneğindeki yapı: { data: { team: { ... } } }
+    if (data.data?.team) {
+      return data.data.team
+    }
+    
+    if (data.team) {
+      return data.team
+    }
 
     return null
   } catch (error) {
