@@ -1,10 +1,11 @@
-// Sunucu tarafında mı çalışıyoruz yoksa tarayıcıda mı?
+// Sunucu tarafında mı çalışıyoruz?
 const IS_SERVER = typeof window === "undefined";
 
-// Eğer sunucudaysak (Server Component) direkt IP'ye git.
-// Eğer tarayıcıdaysak (Client Component) Vercel üzerinden proxy yap (/api/v1).
+// KRİTİK AYAR:
+// 1. Sunucudaysak (Server Component): Direkt IP'ye git (Hızlıdır, HTTPS sorunu olmaz).
+// 2. Tarayıcıdaysak (Client Component): '/api/v1' yolunu kullan (Vercel bunu yakalayıp sunucuya yönlendirecek).
 const API_BASE_URL = IS_SERVER
-  ? "http://134.122.55.126:5001/api/v1"
+  ? "http://134.122.55.126:5001/api/v1" 
   : "/api/v1";
 
 // ------------------------------------------------------------------
@@ -98,7 +99,10 @@ export interface Leader {
 export async function fetchPlayers(): Promise<Player[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/players`, { cache: 'no-store' })
-    if (!response.ok) return []
+    if (!response.ok) {
+      console.error(`Fetch players failed: ${response.status}`)
+      return []
+    }
 
     const data = await response.json()
     if (data.data?.players) return data.data.players
@@ -154,35 +158,23 @@ export async function fetchPlayerStats(
 // ------------------------------------------------------------------
 
 export async function searchPlayers(query: string): Promise<Player[]> {
-  // Frontend Koruması: 2 karakterden azsa istek atma
   if (!query || query.length < 2) return []
 
   try {
     const response = await fetch(`${API_BASE_URL}/players/search?q=${encodeURIComponent(query)}`)
 
-    // 1. HTTP Hatası Kontrolü
-    if (!response.ok) {
-      console.warn(`[Search API Error] Status: ${response.status}`)
-      return []
-    }
+    if (!response.ok) return []
 
-    // 2. JSON Ayrıştırma Kontrolü
     const text = await response.text()
     try {
       const data = JSON.parse(text)
-      
-      console.log("[API] searchPlayers response:", data)
-
       if (data.status === "success" && data.data) {
         return data.data
       }
       return []
-
     } catch (e) {
-      console.error("[API Error] Server returned invalid JSON:", text.substring(0, 100))
       return []
     }
-
   } catch (error) {
     console.error("Error searching players:", error)
     return []
@@ -200,7 +192,10 @@ export async function fetchTeams(conference?: string): Promise<Team[]> {
       : `${API_BASE_URL}/teams`
     
     const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) return []
+    if (!response.ok) {
+      console.error(`Fetch teams failed: ${response.status}`)
+      return []
+    }
 
     const data = await response.json()
     if (data.data?.teams) return data.data.teams
